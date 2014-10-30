@@ -378,6 +378,7 @@ namespace SMDH_Creator
             file = File.OpenWrite(fileName);
             BinaryWriter writer = new BinaryWriter(file);
 
+            this.header.magic = 0x48444D53;
             writer.Write(this.header.magic);
             writer.Write(this.header.version);
             writer.Write(this.header.reserved);
