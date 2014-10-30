@@ -33,10 +33,130 @@ namespace SMDH_Creator
         private smdhHeader header = new smdhHeader();
         private smdhTitle[] applicationTitles = new smdhTitle[16];
         private smdhSettings settings = new smdhSettings();
-        private byte[] reserved = new byte[0x8], smallIconData = new byte[0x480];
-        private UInt16[] bigIconData = new UInt16[0x900];
+        private byte[] reserved = new byte[0x8];
+        private UInt16[] bigIconData = new UInt16[0x900], smallIconData = new UInt16[0x240];
 
         private Bitmap smallIcon= new Bitmap(24, 24), bigIcon = new Bitmap(48, 48);
+
+        public bool Valid
+        {
+            get
+            {
+                return header.magic == 0x48444D53;
+            }
+        }
+
+        public UInt32 Version
+        {
+            get
+            {
+                return this.header.version;
+            }
+        }
+
+        public String GetShortDescription(int appTitleID)
+        {
+            String text = "";
+            foreach (char c in this.applicationTitles[appTitleID].shortDescription)
+            {
+                text += c;
+            }
+            return text;
+        }
+
+        public void SetShortDescription(int appTitleID, string description)
+        {
+            for (int i = 0; i < this.applicationTitles[appTitleID].shortDescription.Length; i += 1)
+            {
+                if (i < description.Length)
+                {
+                    this.applicationTitles[appTitleID].shortDescription[i] = description[i];
+                }
+                else
+                {
+                    this.applicationTitles[appTitleID].shortDescription[i] = 0;
+                }
+            }
+        }
+
+        public String GetLongDescription(int appTitleID)
+        {
+            String text = "";
+            foreach (char c in this.applicationTitles[appTitleID].longDescription)
+            {
+                text += c;
+            }
+            return text;
+        }
+
+        public void SetLongDescription(int appTitleID, string description)
+        {
+            for (int i = 0; i < this.applicationTitles[appTitleID].longDescription.Length; i += 1)
+            {
+                if (i < description.Length)
+                {
+                    this.applicationTitles[appTitleID].longDescription[i] = description[i];
+                }
+                else
+                {
+                    this.applicationTitles[appTitleID].longDescription[i] = 0;
+                }
+            }
+        }
+
+        public String GetPublisher(int appTitleID)
+        {
+            String text = "";
+            foreach (char c in this.applicationTitles[appTitleID].publisher)
+            {
+                text += c;
+            }
+            return text;
+        }
+
+        public void SetPublisher(int appTitleID, string publisher)
+        {
+            if(this.applicationTitles[appTitleID] == null)
+            {
+                this.applicationTitles[appTitleID] = new smdhTitle();
+            }
+            for (int i = 0; i < this.applicationTitles[appTitleID].publisher.Length; i += 1)
+            {
+                if(i < publisher.Length)
+                {
+                    this.applicationTitles[appTitleID].publisher[i] = publisher[i];
+                }
+                else
+                {
+                    this.applicationTitles[appTitleID].publisher[i] = 0;
+                }
+            }
+        }
+
+        public Bitmap SmallIcon
+        {
+            get
+            {
+                return this.smallIcon;
+            }
+            set
+            {
+                this.smallIcon = value;
+                this.convertSmallIcon(false);
+            }
+        }
+        public Bitmap BigIcon
+        {
+            get
+            {
+                return this.bigIcon;
+            }
+            set
+            {
+                this.bigIcon = value;
+                this.convertBigIcon(false);
+            }
+        }
 
         private byte getU8()
         {
@@ -119,80 +239,117 @@ namespace SMDH_Creator
 
         private void readSmallIcon()
         {
-            for (int i = 0; i < 0x480; i += 1)
+            for (int i = 0; i < this.smallIconData.Length; i += 1)
             {
-                this.smallIconData[i] = this.getU8();
+                this.smallIconData[i] = this.getU16();
             }
         }
 
         private void readBigIcon()
         {
-            for (int i = 0; i < 0x900; i += 1)
+            for (int i = 0; i < this.bigIconData.Length; i += 1)
             {
                 this.bigIconData[i] = this.getU16();
             }
         }
         byte[] tileOrder={0,1,8,9,2,3,10,11,16,17,24,25,18,19,26,27,4,5,12,13,6,7,14,15,20,21,28,29,22,23,30,31,32,33,40,41,34,35,42,43,48,49,56,57,50,51,58,59,36,37,44,45,38,39,46,47,52,53,60,61,54,55,62,63};
 
-        private void convertBigIcon()
+        private void convertBigIcon(bool toBitmap)
         {
-            int i = 0;
-            for (int tile_y = 0; tile_y < 48; tile_y += 8)
+            if(toBitmap)
             {
-                for (int tile_x = 0; tile_x < 48; tile_x += 8)
+                int i = 0;
+                for (int tile_y = 0; tile_y < 48; tile_y += 8)
                 {
-                    for (int k = 0; k < 8 * 8; k += 1)
+                    for (int tile_x = 0; tile_x < 48; tile_x += 8)
                     {
-                        int x = tileOrder[k] & 0x7;
-                        int y = tileOrder[k] >> 3;
-                        int color = this.bigIconData[i];
-                        i += 1;
+                        for (int k = 0; k < 8 * 8; k += 1)
+                        {
+                            int x = tileOrder[k] & 0x7;
+                            int y = tileOrder[k] >> 3;
+                            int color = this.bigIconData[i];
+                            i += 1;
 
-                        int b = (color & 0x1f) << 3;
-                        int g = ((color >> 5) & 0x3f) << 2;
-                        int r = ((color >> 11) & 0x1f) << 3;
-                        this.bigIcon.SetPixel(x + tile_x, y + tile_y, Color.FromArgb(r, g, b));
-                        //this.smallIcon.SetPixel(x, y, Color.FromArgb(255, 0, 0));
+                            int b = (color & 0x1f) << 3;
+                            int g = ((color >> 5) & 0x3f) << 2;
+                            int r = ((color >> 11) & 0x1f) << 3;
+
+                            this.bigIcon.SetPixel(x + tile_x, y + tile_y, Color.FromArgb(r, g, b));
+                            //this.smallIcon.SetPixel(x, y, Color.FromArgb(255, 0, 0));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                int i = 0;
+                for (int tile_y = 0; tile_y < 48; tile_y += 8)
+                {
+                    for (int tile_x = 0; tile_x < 48; tile_x += 8)
+                    {
+                        for (int k = 0; k < 8 * 8; k += 1)
+                        {
+                            int x = tileOrder[k] & 0x7;
+                            int y = tileOrder[k] >> 3;
+
+                            int r = this.bigIcon.GetPixel(x + tile_x, y + tile_y).R >> 3;
+                            int g = this.bigIcon.GetPixel(x + tile_x, y + tile_y).G >> 2;
+                            int b = this.bigIcon.GetPixel(x + tile_x, y + tile_y).B >> 3;
+                            
+                            this.bigIconData[i] = (UInt16)((r << 11) | (g << 5) | b);
+                            i += 1;
+                        }
                     }
                 }
             }
         }
-        private void convertSmallIcon()
+        private void convertSmallIcon(bool toBitmap)
         {
-            int i = 0;
-            for (int tile_y = 0; tile_y < 24; tile_y += 8)
+            if (toBitmap)
             {
-                for (int tile_x = 0; tile_x < 24; tile_x += 8)
+                int i = 0;
+                for (int tile_y = 0; tile_y < 24; tile_y += 8)
                 {
-                    for (int k = 0; k < 8 * 8; k += 1)
+                    for (int tile_x = 0; tile_x < 24; tile_x += 8)
                     {
-                        int x = tileOrder[k] & 0x7;
-                        int y = tileOrder[k] >> 3;
-                        int color = this.smallIconData[i];
-                        i += 1;
+                        for (int k = 0; k < 8 * 8; k += 1)
+                        {
+                            int x = tileOrder[k] & 0x7;
+                            int y = tileOrder[k] >> 3;
+                            int color = this.smallIconData[i];
+                            i += 1;
 
-                        int b = (color & 0x1f) << 3;
-                        int g = ((color >> 5) & 0x3f) << 2;
-                        int r = ((color >> 11) & 0x1f) << 3;
-                        this.smallIcon.SetPixel(x + tile_x, y + tile_y, Color.FromArgb(r, g, b));
-                        //this.smallIcon.SetPixel(x, y, Color.FromArgb(255, 0, 0));
+                            int b = (color & 0x1f) << 3;
+                            int g = ((color >> 5) & 0x3f) << 2;
+                            int r = ((color >> 11) & 0x1f) << 3;
+
+                            this.smallIcon.SetPixel(x + tile_x, y + tile_y, Color.FromArgb(r, g, b));
+                            //this.smallIcon.SetPixel(x, y, Color.FromArgb(255, 0, 0));
+                        }
                     }
                 }
             }
-        }
+            else
+            {
+                int i = 0;
+                for (int tile_y = 0; tile_y < 24; tile_y += 8)
+                {
+                    for (int tile_x = 0; tile_x < 24; tile_x += 8)
+                    {
+                        for (int k = 0; k < 8 * 8; k += 1)
+                        {
+                            int x = tileOrder[k] & 0x7;
+                            int y = tileOrder[k] >> 3;
 
-        public Bitmap SmallIcon
-        {
-            get
-            {
-                return this.smallIcon;
-            }
-        }
-        public Bitmap BigIcon
-        {
-            get
-            {
-                return this.bigIcon;
+                            int r = this.smallIcon.GetPixel(x + tile_x, y + tile_y).R >> 3;
+                            int g = this.smallIcon.GetPixel(x + tile_x, y + tile_y).G >> 2;
+                            int b = this.smallIcon.GetPixel(x + tile_x, y + tile_y).B >> 3;
+
+                            this.smallIconData[i] = (UInt16)((r << 11) | (g << 5) | b);
+                            i += 1;
+                        }
+                    }
+                }
             }
         }
 
@@ -202,7 +359,7 @@ namespace SMDH_Creator
             byte[] temp = new byte[4];
 
             this.readHeader();
-            if(header.ToString() != "SMDH")
+            if(this.Valid)
             {
                 this.readTitles();
                 this.readSettings();
@@ -210,8 +367,8 @@ namespace SMDH_Creator
                 this.readSmallIcon();
                 this.readBigIcon();
 
-                this.convertSmallIcon();
-                this.convertBigIcon();
+                this.convertSmallIcon(true);
+                this.convertBigIcon(true);
             }
             file.Close();
         }
@@ -227,6 +384,10 @@ namespace SMDH_Creator
 
             for (int i = 0; i < applicationTitles.Length; i += 1)
             {
+                if (this.applicationTitles[i] == null)
+                {
+                    this.applicationTitles[i] = new smdhTitle();
+                }
                 for (int j = 0; j < this.applicationTitles[i].shortDescription.Length; j += 1)
                 {
                     writer.Write(this.applicationTitles[i].shortDescription[j]);
